@@ -6,12 +6,15 @@ import (
 	"fmt"
 )
 
+// TODO: add comment
 type DataType interface {
 	Encode() ([]byte, error)
 }
 
+// TODO: add comment
 type Sequence []DataType
 
+// TODO: add comment
 func (s Sequence) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -32,8 +35,10 @@ func (s Sequence) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0x30, seqLength), buf.Bytes()...), nil
 }
 
+// TODO: add comment
 type Int int
 
+// TODO: add comment
 func (i Int) Encode() ([]byte, error) {
 	result := []byte{}
 
@@ -68,14 +73,18 @@ func (i Int) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0x02, len(result)), reverseSlice(result)...), nil
 }
 
+// TODO: add comment
 type String string
 
+// TODO: add comment
 func (s String) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0x4, len(s)), []byte(s)...), nil
 }
 
+// TODO: add comment
 type GetRequest []DataType
 
+// TODO: add comment
 func (s GetRequest) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -96,8 +105,10 @@ func (s GetRequest) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa0, seqLength), buf.Bytes()...), nil
 }
 
+// TODO: add comment
 type GetNextRequest []DataType
 
+// TODO: add comment
 func (s GetNextRequest) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -118,8 +129,10 @@ func (s GetNextRequest) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa1, seqLength), buf.Bytes()...), nil
 }
 
+// TODO: add comment
 type GetResponse []DataType
 
+// TODO: add comment
 func (s GetResponse) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -140,8 +153,10 @@ func (s GetResponse) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa2, seqLength), buf.Bytes()...), nil
 }
 
+// TODO: add comment
 type Report []DataType
 
+// TODO: add comment
 func (s Report) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -162,8 +177,10 @@ func (s Report) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa8, seqLength), buf.Bytes()...), nil
 }
 
+// TODO: add comment
 type ObjectIdentifier []uint16
 
+// TODO: add comment
 func (oid ObjectIdentifier) Encode() ([]byte, error) {
 	if len(oid) < 2 {
 		return nil, errors.New("snmp: invalid ObjectIdentifier length")
@@ -184,6 +201,7 @@ func (oid ObjectIdentifier) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0x6, len(b)), b...), nil
 }
 
+// TODO: add comment
 func (oid ObjectIdentifier) String() string {
 	str := ""
 
@@ -194,16 +212,21 @@ func (oid ObjectIdentifier) String() string {
 	return str
 }
 
+// TODO: add comment
 type null byte
 
+// TODO: add comment
 func (n null) Encode() ([]byte, error) {
 	return []byte{0x05, 0}, nil
 }
 
+// TODO: add comment
 const Null null = 0
 
+// TODO: add comment
 type Gauge int
 
+// TODO: add comment
 func (g Gauge) Encode() ([]byte, error) {
 	result := []byte{}
 

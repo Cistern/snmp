@@ -6,6 +6,7 @@ import (
 	"io"
 )
 
+// TODO: make this private
 func Decode(r io.Reader) (DataType, int, error) {
 	bytesRead := 0
 
@@ -21,6 +22,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 	t := typeLength[0]
 	length := int(typeLength[1])
 
+	// TODO: add comment - this is decoding the length?
 	if length > 0x7F {
 		lengthNumBytes := 0x80 ^ byte(length)
 		length = 0
@@ -42,6 +44,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 
 	}
 
+	// TODO: add comment - sequence
 	if t == 0x30 {
 		seq := Sequence{}
 		seqBytes := 0
@@ -62,6 +65,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 		return seq, bytesRead, nil
 	}
 
+	// TODO: add comment - integer types
 	if t == 0x02 || t == 0x41 || t == 0x42 {
 		intBytes := make([]byte, int(length))
 		n, err := r.Read(intBytes)
@@ -79,6 +83,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 		return Int(i), bytesRead, nil
 	}
 
+	// TODO: add comment - strings
 	if t == 0x04 {
 
 		str := make([]byte, length)
@@ -92,6 +97,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 		return String(str), bytesRead, nil
 	}
 
+	// TODO: add comment - get response
 	if t == 0xa2 {
 
 		res := GetResponse{}
@@ -113,6 +119,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 		return res, bytesRead, nil
 	}
 
+	// TODO: add comment - report
 	if t == 0xa8 {
 
 		res := Report{}
@@ -134,6 +141,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 		return res, bytesRead, nil
 	}
 
+	// TODO: add comment - OID
 	if t == 0x06 {
 
 		// Read into a buffer
@@ -164,6 +172,8 @@ func Decode(r io.Reader) (DataType, int, error) {
 
 		return oid, bytesRead, nil
 	}
+
+	// TODO: use a switch for ^?
 
 	return nil, bytesRead, errors.New("unknown type")
 }

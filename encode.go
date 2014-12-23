@@ -1,11 +1,16 @@
 package snmp
 
+// TODO: add comment
 func encodeHeaderSequence(fieldType byte, length int) []byte {
 	result := []byte{fieldType}
 
+	// TODO: add comment - length encoding
 	if length <= 0x7f {
+
+		// TODO: return here
 		result = append(result, byte(length))
-	} else {
+
+	} else { // TODO: get rid of the else
 		result = append(result, 0x80)
 
 		reversed := []byte{}

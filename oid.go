@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// TODO: add comment
 func ParseOID(str string) (ObjectIdentifier, error) {
 	parts := strings.Split(strings.Trim(str, "."), ".")
 
@@ -22,6 +23,7 @@ func ParseOID(str string) (ObjectIdentifier, error) {
 	return oid, nil
 }
 
+// TODO: add comment
 func MustParseOID(str string) ObjectIdentifier {
 	oid, err := ParseOID(str)
 	if err != nil {
@@ -31,6 +33,7 @@ func MustParseOID(str string) ObjectIdentifier {
 	return oid
 }
 
+// TODO: add comment
 func encodeOIDUint(i uint16) []byte {
 	var b []byte
 
@@ -49,6 +52,7 @@ func encodeOIDUint(i uint16) []byte {
 	return reverseSlice(b)
 }
 
+// TODO: add comment
 func reverseSlice(b []byte) []byte {
 	length := len(b)
 	result := make([]byte, 0, length)
