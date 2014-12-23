@@ -15,5 +15,13 @@ func TestSNMP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log(sess.Get(MustParseOID(".1.3.6.1.2.1.1.1.0")))
+	res, err := sess.Get(MustParseOID(".1.3.6.1.2.1.1.1.0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	desc := string(res.(Sequence)[2].(GetResponse)[3].(Sequence)[0].(Sequence)[1].(String))
+	if desc != "SunOS zeus.snmplabs.com 4.1.3_U1 1 sun4m" {
+		t.Error("Expected desc %v, got %v", "SunOS zeus.snmplabs.com 4.1.3_U1 1 sun4m", desc)
+	}
 }
