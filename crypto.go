@@ -8,10 +8,13 @@ import (
 	"encoding/binary"
 )
 
+// TODO: add comment
 func passphraseToKey(passphrase, engineId []byte) []byte {
 	h := sha1.New()
 
 	passphraseLength := len(passphrase)
+
+	// TODO: add comment - why 1048576? (It's 1 MB.)
 	repeat, remain := 1048576/passphraseLength, 1048576%passphraseLength
 
 	for repeat > 0 {
@@ -34,6 +37,7 @@ func passphraseToKey(passphrase, engineId []byte) []byte {
 	return h.Sum(nil)
 }
 
+// TODO: add comment
 func (s *Session) encrypt(payload []byte) ([]byte, []byte) {
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, s.engineBoots)
@@ -59,6 +63,7 @@ func (s *Session) encrypt(payload []byte) ([]byte, []byte) {
 	return encrypted, priv
 }
 
+// TODO: add comment
 func (s *Session) decrypt(payload, priv []byte) []byte {
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, s.engineBoots)
@@ -79,6 +84,7 @@ func (s *Session) decrypt(payload, priv []byte) []byte {
 	return decrypted
 }
 
+// TODO: add comment
 func (s *Session) auth(payload []byte) []byte {
 	paddedAuthKey := make([]byte, 64)
 	copy(paddedAuthKey, s.authKey)
