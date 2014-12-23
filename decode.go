@@ -62,7 +62,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 		return seq, bytesRead, nil
 	}
 
-	if t == 0x02 || t == 0x41 {
+	if t == 0x02 || t == 0x41 || t == 0x42 {
 		intBytes := make([]byte, int(length))
 		n, err := r.Read(intBytes)
 		bytesRead += n

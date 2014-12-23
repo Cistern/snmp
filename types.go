@@ -2,7 +2,6 @@ package snmp
 
 import (
 	"bytes"
-	"encoding/asn1"
 	"errors"
 	"fmt"
 )
@@ -36,7 +35,37 @@ func (s Sequence) Encode() ([]byte, error) {
 type Int int
 
 func (i Int) Encode() ([]byte, error) {
-	return asn1.Marshal(i)
+	result := []byte{}
+
+	if i == 0 {
+		result = append(result, 0)
+	}
+
+	if i < 0 {
+		minusOne := (-i) - 1
+
+		for minusOne > 0 {
+			result = append(result, byte((minusOne%256)^0xff))
+			minusOne >>= 8
+		}
+
+		if result[len(result)-1]&0x80 == 0 {
+			result = append(result, 0xff)
+		}
+	}
+
+	if i > 0 {
+		for i > 0 {
+			result = append(result, byte(i%256))
+			i >>= 8
+		}
+
+		if result[len(result)-1]&0x80 != 0 {
+			result = append(result, 0x0)
+		}
+	}
+
+	return append(encodeHeaderSequence(0x02, len(result)), reverseSlice(result)...), nil
 }
 
 type String string
@@ -172,3 +201,39 @@ func (n null) Encode() ([]byte, error) {
 }
 
 const Null null = 0
+
+type Gauge int
+
+func (g Gauge) Encode() ([]byte, error) {
+	result := []byte{}
+
+	if g == 0 {
+		result = append(result, 0)
+	}
+
+	if g < 0 {
+		minusOne := (-g) - 1
+
+		for minusOne > 0 {
+			result = append(result, byte((minusOne%256)^0xff))
+			minusOne >>= 8
+		}
+
+		if result[len(result)-1]&0x80 == 0 {
+			result = append(result, 0xff)
+		}
+	}
+
+	if g > 0 {
+		for g > 0 {
+			result = append(result, byte(g%256))
+			g >>= 8
+		}
+
+		if result[len(result)-1]&0x80 != 0 {
+			result = append(result, 0x0)
+		}
+	}
+
+	return append(encodeHeaderSequence(0x42, len(result)), reverseSlice(result)...), nil
+}
