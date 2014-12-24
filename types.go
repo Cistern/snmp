@@ -16,6 +16,7 @@ type Int int
 
 // TODO: add comment
 func (i Int) Encode() ([]byte, error) {
+
 	result := []byte{}
 
 	if i == 0 {
@@ -30,8 +31,12 @@ func (i Int) Encode() ([]byte, error) {
 			minusOne >>= 8
 		}
 
-		if result[len(result)-1]&0x80 == 0 {
+		if len(result) == 0 {
 			result = append(result, 0xff)
+		} else {
+			if result[len(result)-1]&0x80 == 0 {
+				result = append(result, 0xff)
+			}
 		}
 	}
 

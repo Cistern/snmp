@@ -4,6 +4,7 @@ import (
 	"encoding/asn1"
 	"errors"
 	"io"
+	"log"
 )
 
 var (
@@ -78,11 +79,36 @@ func decode(r io.Reader) (DataType, int, error) {
 			return nil, bytesRead, err
 		}
 
-		intBytes = append([]byte{0x02, byte(length)}, intBytes...)
-
+		// Decode integer
 		i := 0
-		asn1.Unmarshal(intBytes, &i)
+		negative := false
+		if intBytes[0]&0x80 != 0 {
+			negative = true
+		}
 
+		log.Println(intBytes)
+
+		for j, b := range intBytes {
+			if j > 0 {
+				i <<= 8
+			}
+
+			if negative {
+				b ^= 0xff
+			}
+
+			i |= int(b)
+		}
+
+		if negative {
+			i = -1 * (i + 1)
+		}
+
+		log.Println(i)
+
+		intBytes = append([]byte{0x02, byte(length)}, intBytes...)
+		asn1.Unmarshal(intBytes, &i)
+		log.Println(i)
 		return Int(i), bytesRead, nil
 	}
 
