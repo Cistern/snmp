@@ -6,8 +6,11 @@ import (
 	"io"
 )
 
-// TODO: make this private
-func Decode(r io.Reader) (DataType, int, error) {
+var (
+	ErrDecodingType = errors.New("snmp: error decoding type")
+)
+
+func decode(r io.Reader) (DataType, int, error) {
 	bytesRead := 0
 
 	typeLength := []byte{0, 0}
@@ -50,7 +53,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 		seqBytes := 0
 
 		for seqBytes < length {
-			item, read, err := Decode(r)
+			item, read, err := decode(r)
 			if read > 0 && item != nil {
 				seq = append(seq, item)
 				bytesRead += read
@@ -99,24 +102,8 @@ func Decode(r io.Reader) (DataType, int, error) {
 
 	// TODO: add comment - get response
 	if t == 0xa2 {
-
-		res := GetResponse{}
-		seqBytes := 0
-
-		for seqBytes < length {
-			item, read, err := Decode(r)
-			if read > 0 && item != nil {
-				res = append(res, item)
-				bytesRead += read
-				seqBytes += read
-			}
-
-			if err != nil {
-				return nil, bytesRead, err
-			}
-		}
-
-		return res, bytesRead, nil
+		getResponse, n, err := decodeGetResponse(length, r)
+		return getResponse, n + bytesRead, err
 	}
 
 	// TODO: add comment - report
@@ -126,7 +113,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 		seqBytes := 0
 
 		for seqBytes < length {
-			item, read, err := Decode(r)
+			item, read, err := decode(r)
 			if read > 0 && item != nil {
 				res = append(res, item)
 				bytesRead += read

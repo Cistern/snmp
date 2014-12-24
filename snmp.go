@@ -93,7 +93,7 @@ func (s *Session) handleListen() {
 			// What if the socket gets closed?
 		}
 
-		decoded, _, err := Decode(bytes.NewReader(b[:n]))
+		decoded, _, err := decode(bytes.NewReader(b[:n]))
 		if err != nil {
 			continue
 		}
@@ -108,7 +108,7 @@ func (s *Session) handleListen() {
 		case String:
 			encrypted := []byte(decoded.(Sequence)[3].(String)) // TODO: make this safe
 
-			engineStuff, _, err := Decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+			engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 			if err != nil {
 				continue
 			}
@@ -118,7 +118,7 @@ func (s *Session) handleListen() {
 
 			priv := []byte(engineStuff.(Sequence)[5].(String))
 
-			result, _, err := Decode(bytes.NewReader(s.decrypt(encrypted, priv)))
+			result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
 
 			if err != nil {
 				continue
@@ -128,7 +128,7 @@ func (s *Session) handleListen() {
 
 			switch responseData.(type) {
 			case GetResponse:
-				reqId = int(responseData.(GetResponse)[0].(Int)) // TODO: wait, what's the reqId on 104, then?
+				reqId = responseData.(GetResponse).requestID
 
 			case Report:
 				reqId = int(responseData.(Report)[0].(Int)) // TODO: ^
@@ -206,7 +206,7 @@ func (s *Session) Discover() error {
 		}
 	}
 
-	engineStuff, _, err := Decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+	engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (s *Session) Discover() error {
 	return nil
 }
 
-func (s *Session) Get(oid ObjectIdentifier) (interface{}, error) {
+func (s *Session) Get(oid ObjectIdentifier) (*GetResponse, error) {
 	reqId := Int(rand.Int31())
 
 	getReq, err := Sequence{
@@ -270,7 +270,7 @@ func (s *Session) Get(oid ObjectIdentifier) (interface{}, error) {
 	}
 
 	encrypted = []byte(decoded.(Sequence)[3].(String))
-	engineStuff, _, err := Decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+	engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 
 	if err != nil {
 		return nil, err
@@ -281,8 +281,14 @@ func (s *Session) Get(oid ObjectIdentifier) (interface{}, error) {
 
 	priv = []byte(engineStuff.(Sequence)[5].(String))
 
-	result, _, err := Decode(bytes.NewReader(s.decrypt(encrypted, priv)))
-	return result, err
+	result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
+
+	getRes, ok := result.(Sequence)[2].(GetResponse)
+	if !ok {
+		return nil, ErrDecodingType
+	}
+
+	return &getRes, nil
 }
 
 func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
@@ -324,13 +330,13 @@ func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
 		log.Fatal(err)
 	}
 
-	decoded, _, err := Decode(bytes.NewReader(b[:n]))
+	decoded, _, err := decode(bytes.NewReader(b[:n]))
 	if err != nil {
 		return nil, err
 	}
 
 	encrypted = []byte(decoded.(Sequence)[3].(String))
-	engineStuff, _, err := Decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+	engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +346,7 @@ func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
 
 	priv = []byte(engineStuff.(Sequence)[5].(String))
 
-	result, _, err := Decode(bytes.NewReader(s.decrypt(encrypted, priv)))
+	result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
 	return result, err
 }
 
