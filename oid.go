@@ -8,10 +8,10 @@ import (
 	"strings"
 )
 
-// TODO: add comment
+// ObjectIdentifier represents an SNMP OID.
 type ObjectIdentifier []uint16
 
-// TODO: add comment
+// ParseOID parses and returns an ObjectIdentifier and an error.
 func ParseOID(str string) (ObjectIdentifier, error) {
 	parts := strings.Split(strings.Trim(str, "."), ".")
 
@@ -29,7 +29,8 @@ func ParseOID(str string) (ObjectIdentifier, error) {
 	return oid, nil
 }
 
-// TODO: add comment
+// MustParseOID parses a string and returns an ObjectIdentifier.
+// It panics if an error is encountered.
 func MustParseOID(str string) ObjectIdentifier {
 	oid, err := ParseOID(str)
 	if err != nil {
@@ -39,7 +40,7 @@ func MustParseOID(str string) ObjectIdentifier {
 	return oid
 }
 
-// TODO: add comment
+// encodeOIDUint encodes a uint16 using base 128.
 func encodeOIDUint(i uint16) []byte {
 	var b []byte
 
@@ -58,7 +59,7 @@ func encodeOIDUint(i uint16) []byte {
 	return reverseSlice(b)
 }
 
-// TODO: add comment
+// Encode encodes an ObjectIdentifier with the proper header.
 func (oid ObjectIdentifier) Encode() ([]byte, error) {
 	if len(oid) < 2 {
 		return nil, errors.New("snmp: invalid ObjectIdentifier length")
@@ -79,6 +80,8 @@ func (oid ObjectIdentifier) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0x6, len(b)), b...), nil
 }
 
+// decodeOID decodes an OID up to length bytes from r.
+// It returns the SNMP data type, the number of bytes read, and an error.
 func decodeOID(length int, r io.Reader) (ObjectIdentifier, int, error) {
 	bytesRead := 0
 
@@ -110,7 +113,8 @@ func decodeOID(length int, r io.Reader) (ObjectIdentifier, int, error) {
 	return oid, bytesRead, nil
 }
 
-// TODO: add comment
+// String returns the string representation of an ObjectIdentifer.
+// This value can be parsed into the original OID as well.
 func (oid ObjectIdentifier) String() string {
 	str := ""
 

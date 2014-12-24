@@ -5,10 +5,10 @@ import (
 	"io"
 )
 
-// TODO: add comment
+// Sequence represents an SNMP SEQUENCE.
 type Sequence []DataType
 
-// TODO: add comment
+// Encode encodes a Sequence with the proper header.
 func (s Sequence) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -29,6 +29,8 @@ func (s Sequence) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0x30, seqLength), buf.Bytes()...), nil
 }
 
+// decodeSequence decodes a sequence up to length bytes from r.
+// It returns the SNMP data type, the number of bytes read, and an error.
 func decodeSequence(length int, r io.Reader) (Sequence, int, error) {
 	seq := Sequence{}
 	seqBytes := 0

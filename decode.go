@@ -10,6 +10,8 @@ var (
 	ErrUnknownType  = errors.New("snmp: unknown type")
 )
 
+// decode decodes an SNMP DataType from r.
+// It returns the SNMP data type, the number of bytes read, and an error.
 func decode(r io.Reader) (DataType, int, error) {
 	bytesRead := 0
 

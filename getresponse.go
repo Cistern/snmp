@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-// TODO: add comment
+// GetResponse represents an SNMP GET-RESPONSE.
 type GetResponse struct {
 	rawSequence []DataType
 	requestID   int
@@ -14,7 +14,7 @@ type GetResponse struct {
 	Varbinds    []Varbind
 }
 
-// TODO: add comment
+// Encode encodes a GetResponse with the proper header.
 func (s GetResponse) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -35,7 +35,11 @@ func (s GetResponse) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa2, seqLength), buf.Bytes()...), nil
 }
 
-func decodeGetResponse(length int, r io.Reader) (DataType, int, error) {
+// decodeGetResponse decodes a GetResponse up to length bytes from r.
+// It returns the SNMP data type, the number of bytes read, and an error.
+// For convenience, individual fields values are copied directly into
+// the GetResponse struct.
+func decodeGetResponse(length int, r io.Reader) (GetResponse, int, error) {
 	res := GetResponse{}
 	seqBytes := 0
 	bytesRead := 0
@@ -49,36 +53,36 @@ func decodeGetResponse(length int, r io.Reader) (DataType, int, error) {
 		}
 
 		if err != nil {
-			return nil, bytesRead, err
+			return res, bytesRead, err
 		}
 	}
 
 	reqID, ok := res.rawSequence[0].(Int)
 	if !ok {
-		return nil, bytesRead, ErrDecodingType
+		return res, bytesRead, ErrDecodingType
 	}
 	res.requestID = int(reqID)
 
 	errorCode, ok := res.rawSequence[1].(Int)
 	if !ok {
-		return nil, bytesRead, ErrDecodingType
+		return res, bytesRead, ErrDecodingType
 	}
 	res.err = int(errorCode)
 
 	errIndex, ok := res.rawSequence[2].(Int)
 	if !ok {
-		return nil, bytesRead, ErrDecodingType
+		return res, bytesRead, ErrDecodingType
 	}
 	res.errIndex = int(errIndex)
 
 	varbindSeq, ok := res.rawSequence[3].(Sequence)
 	if !ok {
-		return nil, bytesRead, ErrDecodingType
+		return res, bytesRead, ErrDecodingType
 	}
 	for _, varbindElem := range varbindSeq {
 		varbindPair, ok := varbindElem.(Sequence)
 		if !ok {
-			return nil, bytesRead, ErrDecodingType
+			return res, bytesRead, ErrDecodingType
 		}
 
 		oid, ok := varbindPair[0].(ObjectIdentifier)

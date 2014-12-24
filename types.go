@@ -16,23 +16,23 @@ const (
 	TypeReport      = 0xa8
 )
 
-// TODO: add comment
+// DataType represents an SNMP data type.
 type DataType interface {
 	Encode() ([]byte, error)
 }
 
-// TODO: add comment
+// String represents an SNMP OCTET STRING.
 type String string
 
-// TODO: add comment
+// Encode encodes a String with the proper header.
 func (s String) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0x4, len(s)), []byte(s)...), nil
 }
 
-// TODO: add comment
+// GetRequest represents an SNMP GetRequest-PDU.
 type GetRequest []DataType
 
-// TODO: add comment
+// Encode encodes a GetRequest with the proper header.
 func (s GetRequest) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -53,10 +53,10 @@ func (s GetRequest) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa0, seqLength), buf.Bytes()...), nil
 }
 
-// TODO: add comment
+// GetNextRequest represents an SNMP GetNextRequest-PDU.
 type GetNextRequest []DataType
 
-// TODO: add comment
+// Encode encodes a GetNextRequest with the proper header.
 func (s GetNextRequest) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -77,10 +77,10 @@ func (s GetNextRequest) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa1, seqLength), buf.Bytes()...), nil
 }
 
-// TODO: add comment
+// Report represents an SNMP Report-PDU.
 type Report []DataType
 
-// TODO: add comment
+// Encode encodes a Report with the proper header.
 func (s Report) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -101,51 +101,22 @@ func (s Report) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa8, seqLength), buf.Bytes()...), nil
 }
 
-// TODO: add comment
+// null represents an SNMP NULL data type.
 type null byte
 
-// TODO: add comment
+// Encode encodes a null with the proper header.
 func (n null) Encode() ([]byte, error) {
 	return []byte{0x05, 0}, nil
 }
 
-// TODO: add comment
+// Null represents an SNMP NULL.
 const Null null = 0
 
-// TODO: add comment
+// Gauge represents an SNMP GAUGE data type.
 type Gauge int
 
-// TODO: add comment
+// Encode encodes a Gauge with the proper header.
 func (g Gauge) Encode() ([]byte, error) {
-	result := []byte{}
-
-	if g == 0 {
-		result = append(result, 0)
-	}
-
-	if g < 0 {
-		minusOne := (-g) - 1
-
-		for minusOne > 0 {
-			result = append(result, byte((minusOne%256)^0xff))
-			minusOne >>= 8
-		}
-
-		if result[len(result)-1]&0x80 == 0 {
-			result = append(result, 0xff)
-		}
-	}
-
-	if g > 0 {
-		for g > 0 {
-			result = append(result, byte(g%256))
-			g >>= 8
-		}
-
-		if result[len(result)-1]&0x80 != 0 {
-			result = append(result, 0x0)
-		}
-	}
-
-	return append(encodeHeaderSequence(0x42, len(result)), reverseSlice(result)...), nil
+	result := encodeInteger(int(g))
+	return append(encodeHeaderSequence(0x42, len(result)), result...), nil
 }

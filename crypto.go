@@ -8,14 +8,16 @@ import (
 	"encoding/binary"
 )
 
-// TODO: add comment
+const oneMegabyte = 1024 * 1024
+
+// passphraseToKey generates a SHA1 hashed key using the given passphrase.
 func passphraseToKey(passphrase, engineId []byte) []byte {
 	h := sha1.New()
 
 	passphraseLength := len(passphrase)
 
-	// TODO: add comment - why 1048576? (It's 1 MB.)
-	repeat, remain := 1048576/passphraseLength, 1048576%passphraseLength
+	// Write 1 MB to the hash
+	repeat, remain := oneMegabyte/passphraseLength, oneMegabyte%passphraseLength
 
 	for repeat > 0 {
 		h.Write(passphrase)
@@ -37,7 +39,7 @@ func passphraseToKey(passphrase, engineId []byte) []byte {
 	return h.Sum(nil)
 }
 
-// TODO: add comment
+// encrypt returns an AES encrypted payload with a priv parameter.
 func (s *Session) encrypt(payload []byte) ([]byte, []byte) {
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, s.engineBoots)
@@ -63,7 +65,7 @@ func (s *Session) encrypt(payload []byte) ([]byte, []byte) {
 	return encrypted, priv
 }
 
-// TODO: add comment
+// decrypt returns a decrypted payload
 func (s *Session) decrypt(payload, priv []byte) []byte {
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, s.engineBoots)
@@ -84,7 +86,7 @@ func (s *Session) decrypt(payload, priv []byte) []byte {
 	return decrypted
 }
 
-// TODO: add comment
+// auth returns the authentication hash for the given payload.
 func (s *Session) auth(payload []byte) []byte {
 	paddedAuthKey := make([]byte, 64)
 	copy(paddedAuthKey, s.authKey)

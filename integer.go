@@ -4,11 +4,11 @@ import (
 	"io"
 )
 
-// Int represents an SNMP INTEGER
+// Int represents an SNMP INTEGER.
 type Int int
 
-// Encode encodes an Int with the proper header.
-func (i Int) Encode() ([]byte, error) {
+// encodeInteger encodes a length-encoded integer.
+func encodeInteger(i int) []byte {
 	result := []byte{}
 
 	if i == 0 {
@@ -41,9 +41,17 @@ func (i Int) Encode() ([]byte, error) {
 		}
 	}
 
-	return append(encodeHeaderSequence(0x02, len(result)), reverseSlice(result)...), nil
+	return reverseSlice(result)
 }
 
+// Encode encodes an Int with the proper header.
+func (i Int) Encode() ([]byte, error) {
+	result := encodeInteger(int(i))
+	return append(encodeHeaderSequence(0x02, len(result)), result...), nil
+}
+
+// decodeInteger decodes an integer up to length bytes from r.
+// It returns the SNMP data type, the number of bytes read, and an error.
 func decodeInteger(length int, r io.Reader) (Int, int, error) {
 	intBytes := make([]byte, int(length))
 	bytesRead := 0

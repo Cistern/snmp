@@ -22,6 +22,8 @@ func NewVarbind(OID ObjectIdentifier, value DataType) Varbind {
 	}
 }
 
+// GetStringValue returns the string value of a variable binding.
+// An error is returned if the value is not a string.
 func (v Varbind) GetStringValue() (string, error) {
 	str, ok := v.value.(String)
 
@@ -32,6 +34,8 @@ func (v Varbind) GetStringValue() (string, error) {
 	return string(str), nil
 }
 
+// GetIntegerValue returns the integer value of a variable binding.
+// An error is returned if the value is not an integer.
 func (v Varbind) GetIntegerValue() (int, error) {
 	i, ok := v.value.(Int)
 
