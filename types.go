@@ -6,52 +6,21 @@ import (
 	"fmt"
 )
 
+const (
+	TypeInteger  = 0x02
+	TypeString   = 0x04
+	TypeOID      = 0x06
+	TypeSequence = 0x30
+	TypeCounter  = 0x41
+	TypeGauge    = 0x42
+
+	TypeGetResponse = 0xa2
+	TypeReport      = 0xa8
+)
+
 // TODO: add comment
 type DataType interface {
 	Encode() ([]byte, error)
-}
-
-// TODO: add comment
-type Int int
-
-// TODO: add comment
-func (i Int) Encode() ([]byte, error) {
-
-	result := []byte{}
-
-	if i == 0 {
-		result = append(result, 0)
-	}
-
-	if i < 0 {
-		minusOne := (-i) - 1
-
-		for minusOne > 0 {
-			result = append(result, byte((minusOne%256)^0xff))
-			minusOne >>= 8
-		}
-
-		if len(result) == 0 {
-			result = append(result, 0xff)
-		} else {
-			if result[len(result)-1]&0x80 == 0 {
-				result = append(result, 0xff)
-			}
-		}
-	}
-
-	if i > 0 {
-		for i > 0 {
-			result = append(result, byte(i%256))
-			i >>= 8
-		}
-
-		if result[len(result)-1]&0x80 != 0 {
-			result = append(result, 0x0)
-		}
-	}
-
-	return append(encodeHeaderSequence(0x02, len(result)), reverseSlice(result)...), nil
 }
 
 // TODO: add comment

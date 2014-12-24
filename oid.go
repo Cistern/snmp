@@ -51,16 +51,3 @@ func encodeOIDUint(i uint16) []byte {
 
 	return reverseSlice(b)
 }
-
-// TODO: add comment
-func reverseSlice(b []byte) []byte {
-	length := len(b)
-	result := make([]byte, 0, length)
-
-	for length > 0 {
-		result = append(result, b[length-1])
-		length--
-	}
-
-	return result
-}

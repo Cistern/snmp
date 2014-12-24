@@ -30,3 +30,15 @@ func encodeHeaderSequence(fieldType byte, length int) []byte {
 
 	return result
 }
+
+func reverseSlice(b []byte) []byte {
+	length := len(b)
+	result := make([]byte, 0, length)
+
+	for length > 0 {
+		result = append(result, b[length-1])
+		length--
+	}
+
+	return result
+}
