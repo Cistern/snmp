@@ -28,6 +28,6 @@ func TestSNMP(t *testing.T) {
 	t.Log(res.requestID)
 	t.Log(res.err)
 	t.Log(res.errIndex)
-	t.Log(res.Varbinds[0].OID)
-	t.Log(res.Varbinds[0].GetStringValue())
+	t.Log(res.varbinds[0].OID)
+	t.Log(res.varbinds[0].GetStringValue())
 }
