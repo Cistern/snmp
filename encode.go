@@ -1,36 +1,38 @@
 package snmp
 
-// TODO: add comment
+// encodeHeaderSequence encodes an SNMP data type
+// header sequence. The first byte is the field type and
+// the remaining bytes are a length-encoded length.
 func encodeHeaderSequence(fieldType byte, length int) []byte {
+
+	// Field type is one byte
 	result := []byte{fieldType}
 
-	// TODO: add comment - length encoding
+	// Encode the length
 	if length <= 0x7f {
-
-		// TODO: return here
-		result = append(result, byte(length))
-
-	} else { // TODO: get rid of the else
-		result = append(result, 0x80)
-
-		reversed := []byte{}
-		for length > 0 {
-			reversed = append(reversed, byte(length))
-			result = append(result, 0)
-			length = length >> 8
-		}
-
-		numBytes := len(reversed)
-		for i, j := numBytes-1, 2; i >= 0; i, j = i-1, j+1 {
-			result[j] = reversed[i]
-		}
-
-		result[1] |= byte(numBytes)
+		// Length fits in one byte
+		return append(result, byte(length))
 	}
+
+	// Need to length-encode the length
+	result = append(result, 0x80)
+
+	// We do little endian first
+	reversed := []byte{}
+	for length > 0 {
+		reversed = append(reversed, byte(length))
+		length = length >> 8
+	}
+
+	// and then reverse it
+	result = append(result, reverseSlice(reversed)...)
+
+	result[1] |= byte(len(reversed))
 
 	return result
 }
 
+// reverseSlice returns a []byte in reverse order.
 func reverseSlice(b []byte) []byte {
 	length := len(b)
 	result := make([]byte, 0, length)

@@ -7,6 +7,7 @@ import (
 
 var (
 	ErrDecodingType = errors.New("snmp: error decoding type")
+	ErrUnknownType  = errors.New("snmp: unknown type")
 )
 
 func decode(r io.Reader) (DataType, int, error) {
@@ -42,24 +43,19 @@ func decode(r io.Reader) (DataType, int, error) {
 			length |= int(b[0])
 			lengthNumBytes--
 		}
-
 	}
 
-	// Decode Sequence
-	if t == TypeSequence {
+	// Decode types
+	switch t {
+	case TypeSequence:
 		seq, n, err := decodeSequence(length, r)
 		return seq, bytesRead + n, err
-	}
 
-	// Decode Integer, Counter, Gauge
-	if t == TypeInteger || t == TypeCounter || t == TypeGauge {
+	case TypeInteger, TypeCounter, TypeGauge:
 		i, n, err := decodeInteger(length, r)
 		return i, bytesRead + n, err
-	}
 
-	// Decode String
-	if t == TypeString {
-
+	case TypeString:
 		str := make([]byte, length)
 		n, _ := r.Read(str)
 		bytesRead += n
@@ -69,17 +65,16 @@ func decode(r io.Reader) (DataType, int, error) {
 		}
 
 		return String(str), bytesRead, nil
-	}
 
-	// Decode GetResponse
-	if t == TypeGetResponse {
+	case TypeOID:
+		oid, n, err := decodeOID(length, r)
+		return oid, bytesRead + n, err
+
+	case TypeGetResponse:
 		getResponse, n, err := decodeGetResponse(length, r)
 		return getResponse, n + bytesRead, err
-	}
 
-	// Decode Report
-	if t == TypeReport {
-
+	case TypeReport:
 		res := Report{}
 		seqBytes := 0
 
@@ -97,38 +92,8 @@ func decode(r io.Reader) (DataType, int, error) {
 		}
 
 		return res, bytesRead, nil
+
+	default:
+		return nil, bytesRead, ErrUnknownType
 	}
-
-	// Decode OID
-	if t == TypeOID {
-
-		// Read into a buffer
-		b := make([]byte, length)
-		n, err := r.Read(b)
-		bytesRead += n
-
-		if err != nil {
-			return nil, bytesRead, err
-		}
-
-		oid := ObjectIdentifier{uint16(b[0]) / 40, uint16(b[0]) % 40}
-
-		for i := 1; i < length; i++ {
-			val := uint16(0)
-
-			for b[i] >= 128 {
-				val += uint16(b[i]) - 128
-				val *= 128
-				i++
-			}
-
-			val += uint16(b[i])
-
-			oid = append(oid, val)
-		}
-
-		return oid, bytesRead, nil
-	}
-
-	return nil, bytesRead, errors.New("unknown type")
 }
