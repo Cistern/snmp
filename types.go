@@ -2,80 +2,37 @@ package snmp
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 )
 
+const (
+	TypeInteger  = 0x02
+	TypeString   = 0x04
+	TypeOID      = 0x06
+	TypeSequence = 0x30
+	TypeCounter  = 0x41
+	TypeGauge    = 0x42
+
+	TypeGetResponse = 0xa2
+	TypeReport      = 0xa8
+)
+
+// DataType represents an SNMP data type.
 type DataType interface {
 	Encode() ([]byte, error)
 }
 
-type Sequence []DataType
-
-func (s Sequence) Encode() ([]byte, error) {
-	buf := &bytes.Buffer{}
-
-	for _, entry := range s {
-		encodedEntry, err := entry.Encode()
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = buf.Write(encodedEntry)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	seqLength := buf.Len()
-
-	return append(encodeHeaderSequence(0x30, seqLength), buf.Bytes()...), nil
-}
-
-type Int int
-
-func (i Int) Encode() ([]byte, error) {
-	result := []byte{}
-
-	if i == 0 {
-		result = append(result, 0)
-	}
-
-	if i < 0 {
-		minusOne := (-i) - 1
-
-		for minusOne > 0 {
-			result = append(result, byte((minusOne%256)^0xff))
-			minusOne >>= 8
-		}
-
-		if result[len(result)-1]&0x80 == 0 {
-			result = append(result, 0xff)
-		}
-	}
-
-	if i > 0 {
-		for i > 0 {
-			result = append(result, byte(i%256))
-			i >>= 8
-		}
-
-		if result[len(result)-1]&0x80 != 0 {
-			result = append(result, 0x0)
-		}
-	}
-
-	return append(encodeHeaderSequence(0x02, len(result)), reverseSlice(result)...), nil
-}
-
+// String represents an SNMP OCTET STRING.
 type String string
 
+// Encode encodes a String with the proper header.
 func (s String) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0x4, len(s)), []byte(s)...), nil
 }
 
+// GetRequest represents an SNMP GetRequest-PDU.
 type GetRequest []DataType
 
+// Encode encodes a GetRequest with the proper header.
 func (s GetRequest) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -96,8 +53,10 @@ func (s GetRequest) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa0, seqLength), buf.Bytes()...), nil
 }
 
+// GetNextRequest represents an SNMP GetNextRequest-PDU.
 type GetNextRequest []DataType
 
+// Encode encodes a GetNextRequest with the proper header.
 func (s GetNextRequest) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -118,30 +77,10 @@ func (s GetNextRequest) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa1, seqLength), buf.Bytes()...), nil
 }
 
-type GetResponse []DataType
-
-func (s GetResponse) Encode() ([]byte, error) {
-	buf := &bytes.Buffer{}
-
-	for _, entry := range s {
-		encodedEntry, err := entry.Encode()
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = buf.Write(encodedEntry)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	seqLength := buf.Len()
-
-	return append(encodeHeaderSequence(0xa2, seqLength), buf.Bytes()...), nil
-}
-
+// Report represents an SNMP Report-PDU.
 type Report []DataType
 
+// Encode encodes a Report with the proper header.
 func (s Report) Encode() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -162,78 +101,22 @@ func (s Report) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0xa8, seqLength), buf.Bytes()...), nil
 }
 
-type ObjectIdentifier []uint16
-
-func (oid ObjectIdentifier) Encode() ([]byte, error) {
-	if len(oid) < 2 {
-		return nil, errors.New("snmp: invalid ObjectIdentifier length")
-	}
-
-	if oid[0] != 1 && oid[1] != 3 {
-		return nil, errors.New("ObjectIdentifier does not start with .1.3")
-	}
-
-	b := make([]byte, 0, len(oid)+1)
-
-	b = append(b, 0x2b)
-
-	for i := 2; i < len(oid); i++ {
-		b = append(b, encodeOIDUint(oid[i])...)
-	}
-
-	return append(encodeHeaderSequence(0x6, len(b)), b...), nil
-}
-
-func (oid ObjectIdentifier) String() string {
-	str := ""
-
-	for _, part := range oid {
-		str += fmt.Sprintf(".%d", part)
-	}
-
-	return str
-}
-
+// null represents an SNMP NULL data type.
 type null byte
 
+// Encode encodes a null with the proper header.
 func (n null) Encode() ([]byte, error) {
 	return []byte{0x05, 0}, nil
 }
 
+// Null represents an SNMP NULL.
 const Null null = 0
 
+// Gauge represents an SNMP GAUGE data type.
 type Gauge int
 
+// Encode encodes a Gauge with the proper header.
 func (g Gauge) Encode() ([]byte, error) {
-	result := []byte{}
-
-	if g == 0 {
-		result = append(result, 0)
-	}
-
-	if g < 0 {
-		minusOne := (-g) - 1
-
-		for minusOne > 0 {
-			result = append(result, byte((minusOne%256)^0xff))
-			minusOne >>= 8
-		}
-
-		if result[len(result)-1]&0x80 == 0 {
-			result = append(result, 0xff)
-		}
-	}
-
-	if g > 0 {
-		for g > 0 {
-			result = append(result, byte(g%256))
-			g >>= 8
-		}
-
-		if result[len(result)-1]&0x80 != 0 {
-			result = append(result, 0x0)
-		}
-	}
-
-	return append(encodeHeaderSequence(0x42, len(result)), reverseSlice(result)...), nil
+	result := encodeInteger(int(g))
+	return append(encodeHeaderSequence(0x42, len(result)), result...), nil
 }

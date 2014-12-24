@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// Session represents an SNMP v3 session to a single device.
 type Session struct {
 	addr           *net.UDPAddr
 	conn           *net.UDPConn
@@ -30,6 +31,8 @@ type Session struct {
 	lock     sync.Mutex
 }
 
+// NewSession creates a new SNMP v3 session using "authPriv" mode with
+// SHA authentication and AES encryption.
 func NewSession(address, user, authPassphrase, privPassphrase string) (*Session, error) {
 	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
@@ -64,10 +67,11 @@ func (s *Session) doRequest(data []byte, reqId int, c chan DataType) error {
 
 	s.inflight[reqId] = c
 	go func() {
-		<-time.After(500 * time.Millisecond)
+		<-time.After(500 * time.Millisecond) // TODO: make this into a package-level variable
 		s.lock.Lock()
 		defer s.lock.Unlock()
 
+		// TODO: explain what this is doing
 		if c, ok := s.inflight[reqId]; ok {
 			// haven't received a response yet
 			close(c)
@@ -78,28 +82,33 @@ func (s *Session) doRequest(data []byte, reqId int, c chan DataType) error {
 	return nil
 }
 
+// TODO: add comment
 func (s *Session) handleListen() {
 	b := make([]byte, 65500)
 
 	for {
 		n, err := s.conn.Read(b)
-
 		if err != nil {
-			continue
+			continue // TODO: Check if we might get into an infinite loop...
+			// What if the socket gets closed?
 		}
 
-		decoded, _, err := Decode(bytes.NewReader(b[:n]))
+		decoded, _, err := decode(bytes.NewReader(b[:n]))
 		if err != nil {
 			continue
 		}
 
 		s.lock.Lock()
+
+		// TODO: make this safe
 		reqId := int(decoded.(Sequence)[1].(Sequence)[0].(Int))
 
+		// TODO: make this safe
 		switch decoded.(Sequence)[3].(type) {
 		case String:
-			encrypted := []byte(decoded.(Sequence)[3].(String))
-			engineStuff, _, err := Decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+			encrypted := []byte(decoded.(Sequence)[3].(String)) // TODO: make this safe
+
+			engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 			if err != nil {
 				continue
 			}
@@ -109,7 +118,7 @@ func (s *Session) handleListen() {
 
 			priv := []byte(engineStuff.(Sequence)[5].(String))
 
-			result, _, err := Decode(bytes.NewReader(s.decrypt(encrypted, priv)))
+			result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
 
 			if err != nil {
 				continue
@@ -119,22 +128,24 @@ func (s *Session) handleListen() {
 
 			switch responseData.(type) {
 			case GetResponse:
-				reqId = int(responseData.(GetResponse)[0].(Int))
+				reqId = responseData.(GetResponse).requestID
 
 			case Report:
-				reqId = int(responseData.(Report)[0].(Int))
+				reqId = int(responseData.(Report)[0].(Int)) // TODO: ^
 			}
 		}
 
 		if c, ok := s.inflight[reqId]; ok {
-			c <- decoded
+			c <- decoded // TODO: consider a non-blocking send? Think about deadlocks...
 			delete(s.inflight, reqId)
 		}
-		s.lock.Unlock()
+
+		s.lock.Unlock() // TODO: Non-blocking send might be better.
 	}
 
 }
 
+// TODO: add comment
 func (s *Session) Discover() error {
 	reqId := int(rand.Intn(100000))
 
@@ -156,7 +167,7 @@ func (s *Session) Discover() error {
 		Sequence{
 			Int(reqId),
 			Int(65507),
-			String("\x04"),
+			String("\x04"), // TODO: \x04?
 			Int(3),
 		},
 		String(encodedEngineData),
@@ -179,6 +190,8 @@ func (s *Session) Discover() error {
 	var decoded DataType
 	var ok bool
 
+	// TODO: make num of retries a package-level variable
+	// TODO: turn this into a function?
 	for i := 0; i < 3; i++ {
 		c := make(chan DataType)
 		s.doRequest(discoverySequence, int(reqId), c)
@@ -193,7 +206,7 @@ func (s *Session) Discover() error {
 		}
 	}
 
-	engineStuff, _, err := Decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+	engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 	if err != nil {
 		return err
 	}
@@ -208,7 +221,7 @@ func (s *Session) Discover() error {
 	return nil
 }
 
-func (s *Session) Get(oid ObjectIdentifier) (interface{}, error) {
+func (s *Session) Get(oid ObjectIdentifier) (*GetResponse, error) {
 	reqId := Int(rand.Int31())
 
 	getReq, err := Sequence{
@@ -231,6 +244,7 @@ func (s *Session) Get(oid ObjectIdentifier) (interface{}, error) {
 		return nil, err
 	}
 
+	// TODO: turn this all into a function
 	encrypted, priv := s.encrypt(getReq)
 
 	packet, err := s.constructPacket(encrypted, priv)
@@ -256,7 +270,7 @@ func (s *Session) Get(oid ObjectIdentifier) (interface{}, error) {
 	}
 
 	encrypted = []byte(decoded.(Sequence)[3].(String))
-	engineStuff, _, err := Decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+	engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 
 	if err != nil {
 		return nil, err
@@ -267,8 +281,14 @@ func (s *Session) Get(oid ObjectIdentifier) (interface{}, error) {
 
 	priv = []byte(engineStuff.(Sequence)[5].(String))
 
-	result, _, err := Decode(bytes.NewReader(s.decrypt(encrypted, priv)))
-	return result, err
+	result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
+
+	getRes, ok := result.(Sequence)[2].(GetResponse)
+	if !ok {
+		return nil, ErrDecodingType
+	}
+
+	return &getRes, nil
 }
 
 func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
@@ -294,6 +314,7 @@ func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
 		return nil, err
 	}
 
+	// TODO: function this up
 	encrypted, priv := s.encrypt(getNextReq)
 
 	packet, err := s.constructPacket(encrypted, priv)
@@ -309,13 +330,13 @@ func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
 		log.Fatal(err)
 	}
 
-	decoded, _, err := Decode(bytes.NewReader(b[:n]))
+	decoded, _, err := decode(bytes.NewReader(b[:n]))
 	if err != nil {
 		return nil, err
 	}
 
 	encrypted = []byte(decoded.(Sequence)[3].(String))
-	engineStuff, _, err := Decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+	engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +346,7 @@ func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
 
 	priv = []byte(engineStuff.(Sequence)[5].(String))
 
-	result, _, err := Decode(bytes.NewReader(s.decrypt(encrypted, priv)))
+	result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
 	return result, err
 }
 

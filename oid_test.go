@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestEncodeOID(t *testing.T) {
+func TestEncodeAndParseOID(t *testing.T) {
 	oid := ObjectIdentifier{1, 3, 6, 1, 4, 1, 2636, 3, 2, 3, 1, 20}
 
 	b, err := oid.Encode()
@@ -19,7 +19,12 @@ func TestEncodeOID(t *testing.T) {
 		0x2b, 0x06, 0x01, 0x04,
 		0x01, 0x94, 0x4c, 0x03,
 		0x02, 0x03, 0x01, 0x14,
-	}; bytes.Compare(expected, b) != 0 {
+	}; !bytes.Equal(expected, b) {
 		t.Errorf("encoded ObjectIdentifer incorrect. Expected %v, got %v", expected, b)
+	}
+
+	parsed := MustParseOID(oid.String())
+	if oid.String() != parsed.String() {
+		t.Errorf("expected parsed ObjectIdentifer %v, got %v", oid, parsed)
 	}
 }

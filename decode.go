@@ -1,12 +1,18 @@
 package snmp
 
 import (
-	"encoding/asn1"
 	"errors"
 	"io"
 )
 
-func Decode(r io.Reader) (DataType, int, error) {
+var (
+	ErrDecodingType = errors.New("snmp: error decoding type")
+	ErrUnknownType  = errors.New("snmp: unknown type")
+)
+
+// decode decodes an SNMP DataType from r.
+// It returns the SNMP data type, the number of bytes read, and an error.
+func decode(r io.Reader) (DataType, int, error) {
 	bytesRead := 0
 
 	typeLength := []byte{0, 0}
@@ -21,6 +27,7 @@ func Decode(r io.Reader) (DataType, int, error) {
 	t := typeLength[0]
 	length := int(typeLength[1])
 
+	// Decode the length
 	if length > 0x7F {
 		lengthNumBytes := 0x80 ^ byte(length)
 		length = 0
@@ -36,51 +43,21 @@ func Decode(r io.Reader) (DataType, int, error) {
 			}
 
 			length |= int(b[0])
-
 			lengthNumBytes--
 		}
-
 	}
 
-	if t == 0x30 {
-		seq := Sequence{}
-		seqBytes := 0
+	// Decode types
+	switch t {
+	case TypeSequence:
+		seq, n, err := decodeSequence(length, r)
+		return seq, bytesRead + n, err
 
-		for seqBytes < length {
-			item, read, err := Decode(r)
-			if read > 0 && item != nil {
-				seq = append(seq, item)
-				bytesRead += read
-				seqBytes += read
-			}
+	case TypeInteger, TypeCounter, TypeGauge:
+		i, n, err := decodeInteger(length, r)
+		return i, bytesRead + n, err
 
-			if err != nil {
-				return nil, bytesRead, err
-			}
-		}
-
-		return seq, bytesRead, nil
-	}
-
-	if t == 0x02 || t == 0x41 || t == 0x42 {
-		intBytes := make([]byte, int(length))
-		n, err := r.Read(intBytes)
-		bytesRead += n
-
-		if err != nil {
-			return nil, bytesRead, err
-		}
-
-		intBytes = append([]byte{0x02, byte(length)}, intBytes...)
-
-		i := 0
-		asn1.Unmarshal(intBytes, &i)
-
-		return Int(i), bytesRead, nil
-	}
-
-	if t == 0x04 {
-
+	case TypeString:
 		str := make([]byte, length)
 		n, _ := r.Read(str)
 		bytesRead += n
@@ -90,36 +67,21 @@ func Decode(r io.Reader) (DataType, int, error) {
 		}
 
 		return String(str), bytesRead, nil
-	}
 
-	if t == 0xa2 {
+	case TypeOID:
+		oid, n, err := decodeOID(length, r)
+		return oid, bytesRead + n, err
 
-		res := GetResponse{}
-		seqBytes := 0
+	case TypeGetResponse:
+		getResponse, n, err := decodeGetResponse(length, r)
+		return getResponse, n + bytesRead, err
 
-		for seqBytes < length {
-			item, read, err := Decode(r)
-			if read > 0 && item != nil {
-				res = append(res, item)
-				bytesRead += read
-				seqBytes += read
-			}
-
-			if err != nil {
-				return nil, bytesRead, err
-			}
-		}
-
-		return res, bytesRead, nil
-	}
-
-	if t == 0xa8 {
-
+	case TypeReport:
 		res := Report{}
 		seqBytes := 0
 
 		for seqBytes < length {
-			item, read, err := Decode(r)
+			item, read, err := decode(r)
 			if read > 0 && item != nil {
 				res = append(res, item)
 				bytesRead += read
@@ -132,38 +94,8 @@ func Decode(r io.Reader) (DataType, int, error) {
 		}
 
 		return res, bytesRead, nil
+
+	default:
+		return nil, bytesRead, ErrUnknownType
 	}
-
-	if t == 0x06 {
-
-		// Read into a buffer
-		b := make([]byte, length)
-		n, err := r.Read(b)
-		bytesRead += n
-
-		if err != nil {
-			return nil, bytesRead, err
-		}
-
-		// Decode OID
-		oid := ObjectIdentifier{uint16(b[0]) / 40, uint16(b[0]) % 40}
-
-		for i := 1; i < length; i++ {
-			val := uint16(0)
-
-			for b[i] >= 128 {
-				val += uint16(b[i]) - 128
-				val *= 128
-				i++
-			}
-
-			val += uint16(b[i])
-
-			oid = append(oid, val)
-		}
-
-		return oid, bytesRead, nil
-	}
-
-	return nil, bytesRead, errors.New("unknown type")
 }
