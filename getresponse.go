@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-// GetResponse represents an SNMP GET-RESPONSE.
+// GetResponse represents an SNMP GetResponse-PDU.
 type GetResponse struct {
 	rawSequence []DataType
 	requestID   int
