@@ -3,6 +3,7 @@ package snmp
 import (
 	"errors"
 	"io"
+	"log"
 )
 
 var (
@@ -53,7 +54,7 @@ func decode(r io.Reader) (DataType, int, error) {
 		seq, n, err := decodeSequence(length, r)
 		return seq, bytesRead + n, err
 
-	case TypeInteger, TypeCounter, TypeGauge:
+	case TypeInteger, TypeCounter, TypeCounter64, TypeGauge, TypeTimeTicks:
 		i, n, err := decodeInteger(length, r)
 		return i, bytesRead + n, err
 
@@ -67,6 +68,17 @@ func decode(r io.Reader) (DataType, int, error) {
 		}
 
 		return String(str), bytesRead, nil
+
+	case TypeIpAddress:
+		ip := make(IpAddress, length)
+		n, _ := r.Read(ip)
+		bytesRead += n
+
+		if err != nil {
+			return nil, bytesRead, err
+		}
+
+		return ip, bytesRead, nil
 
 	case TypeOID:
 		oid, n, err := decodeOID(length, r)
@@ -95,7 +107,11 @@ func decode(r io.Reader) (DataType, int, error) {
 
 		return res, bytesRead, nil
 
+	case TypeNull, TypeNoSuchObject, TypeNoSuchInstance, TypeEndOfMIBView:
+		return tag(t), bytesRead, nil
+
 	default:
+		log.Printf("0x%X", t)
 		return nil, bytesRead, ErrUnknownType
 	}
 }

@@ -95,6 +95,7 @@ func (s *Session) handleListen() {
 
 		decoded, _, err := decode(bytes.NewReader(b[:n]))
 		if err != nil {
+			log.Println(err)
 			continue
 		}
 
@@ -121,12 +122,11 @@ func (s *Session) handleListen() {
 			result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
 
 			if err != nil {
+				log.Println(err)
 				continue
 			}
 
 			responseData := result.(Sequence)[2]
-
-			log.Printf("%T", responseData)
 
 			switch responseData.(type) {
 			case GetResponse:
@@ -275,6 +275,10 @@ func (s *Session) Get(oid ObjectIdentifier) (*GetResponse, error) {
 		return nil, ErrDecodingType
 	}
 
+	if len(getRes.varbinds) > 0 && getRes.varbinds[0].value == NoSuchInstance {
+		return nil, errors.New("No Such Instance")
+	}
+
 	return &getRes, nil
 }
 
@@ -331,6 +335,10 @@ func (s *Session) GetNext(oid ObjectIdentifier) (*GetResponse, error) {
 	getRes, ok := result.(Sequence)[2].(GetResponse)
 	if !ok {
 		return nil, ErrDecodingType
+	}
+
+	if len(getRes.varbinds) > 0 && getRes.varbinds[0].value == EndOfMIBView {
+		return nil, errors.New("End of MIB View")
 	}
 
 	return &getRes, nil
