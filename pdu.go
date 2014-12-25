@@ -17,6 +17,30 @@ func (p PDU) Varbinds() []Varbind {
 	return p.varbinds
 }
 
+func newPDU(requestID int, err int, errIndex int, varbinds []Varbind) PDU {
+	varbindsSequence := Sequence{}
+	for _, v := range varbinds {
+		varbindsSequence = append(varbindsSequence, Sequence{
+			v.OID, v.value,
+		})
+	}
+
+	rawSequence := []DataType{
+		Int(requestID),
+		Int(err),
+		Int(errIndex),
+		varbindsSequence,
+	}
+
+	return PDU{
+		rawSequence: rawSequence,
+		requestID:   requestID,
+		err:         err,
+		errIndex:    errIndex,
+		varbinds:    varbinds,
+	}
+}
+
 func decodePDU(length int, r io.Reader) (PDU, int, error) {
 	pdu := PDU{}
 

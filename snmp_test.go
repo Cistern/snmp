@@ -30,4 +30,11 @@ func TestSNMP(t *testing.T) {
 	t.Log(res.errIndex)
 	t.Log(res.varbinds[0].OID)
 	t.Log(res.varbinds[0].GetStringValue())
+
+	res, err = sess.GetNext(res.varbinds[0].OID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(res.varbinds[0].OID)
 }

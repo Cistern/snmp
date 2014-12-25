@@ -12,8 +12,10 @@ const (
 	TypeCounter  = 0x41
 	TypeGauge    = 0x42
 
-	TypeGetResponse = 0xa2
-	TypeReport      = 0xa8
+	TypeGetRequest     = 0xa0
+	TypeGetNextRequest = 0xa1
+	TypeGetResponse    = 0xa2
+	TypeReport         = 0xa8
 )
 
 // DataType represents an SNMP data type.
@@ -27,54 +29,6 @@ type String string
 // Encode encodes a String with the proper header.
 func (s String) Encode() ([]byte, error) {
 	return append(encodeHeaderSequence(0x4, len(s)), []byte(s)...), nil
-}
-
-// GetRequest represents an SNMP GetRequest-PDU.
-type GetRequest []DataType
-
-// Encode encodes a GetRequest with the proper header.
-func (s GetRequest) Encode() ([]byte, error) {
-	buf := &bytes.Buffer{}
-
-	for _, entry := range s {
-		encodedEntry, err := entry.Encode()
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = buf.Write(encodedEntry)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	seqLength := buf.Len()
-
-	return append(encodeHeaderSequence(0xa0, seqLength), buf.Bytes()...), nil
-}
-
-// GetNextRequest represents an SNMP GetNextRequest-PDU.
-type GetNextRequest []DataType
-
-// Encode encodes a GetNextRequest with the proper header.
-func (s GetNextRequest) Encode() ([]byte, error) {
-	buf := &bytes.Buffer{}
-
-	for _, entry := range s {
-		encodedEntry, err := entry.Encode()
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = buf.Write(encodedEntry)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	seqLength := buf.Len()
-
-	return append(encodeHeaderSequence(0xa1, seqLength), buf.Bytes()...), nil
 }
 
 // Report represents an SNMP Report-PDU.

@@ -126,6 +126,8 @@ func (s *Session) handleListen() {
 
 			responseData := result.(Sequence)[2]
 
+			log.Printf("%T", responseData)
+
 			switch responseData.(type) {
 			case GetResponse:
 				reqId = responseData.(GetResponse).requestID
@@ -174,12 +176,7 @@ func (s *Session) Discover() error {
 		Sequence{
 			String(""),
 			String(""),
-			GetRequest{
-				Int(0),
-				Int(0),
-				Int(0),
-				Sequence{},
-			},
+			newGetRequest(reqId, []Varbind{}),
 		},
 	}.Encode()
 
@@ -222,22 +219,12 @@ func (s *Session) Discover() error {
 }
 
 func (s *Session) Get(oid ObjectIdentifier) (*GetResponse, error) {
-	reqId := Int(rand.Int31())
+	reqId := int(rand.Int31())
 
 	getReq, err := Sequence{
 		String(s.engineID),
 		String(""),
-		GetRequest{
-			reqId,
-			Int(0),
-			Int(0),
-			Sequence{
-				Sequence{
-					oid,
-					Null,
-				},
-			},
-		},
+		newGetRequest(reqId, []Varbind{NewVarbind(oid, Null)}),
 	}.Encode()
 
 	if err != nil {
@@ -291,23 +278,13 @@ func (s *Session) Get(oid ObjectIdentifier) (*GetResponse, error) {
 	return &getRes, nil
 }
 
-func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
-	reqId := Int(rand.Int31())
+func (s *Session) GetNext(oid ObjectIdentifier) (*GetResponse, error) {
+	reqId := int(rand.Int31())
 
 	getNextReq, err := Sequence{
 		String(s.engineID),
 		String(""),
-		GetNextRequest{
-			reqId,
-			Int(0),
-			Int(0),
-			Sequence{
-				Sequence{
-					oid,
-					Null,
-				},
-			},
-		},
+		newGetNextRequest(reqId, []Varbind{NewVarbind(oid, Null)}),
 	}.Encode()
 
 	if err != nil {
@@ -322,17 +299,21 @@ func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
 		return nil, err
 	}
 
-	s.conn.WriteTo(packet, s.addr)
+	var decoded DataType
+	var ok bool
 
-	b := make([]byte, 65500)
-	n, err := s.conn.Read(b)
-	if err != nil {
-		log.Fatal(err)
-	}
+	for i := 0; i < 3; i++ {
+		c := make(chan DataType)
+		s.doRequest(packet, int(reqId), c)
 
-	decoded, _, err := decode(bytes.NewReader(b[:n]))
-	if err != nil {
-		return nil, err
+		decoded, ok = <-c
+		if ok {
+			break
+		} else {
+			if i == 2 {
+				return nil, errors.New("timeout")
+			}
+		}
 	}
 
 	encrypted = []byte(decoded.(Sequence)[3].(String))
@@ -347,7 +328,12 @@ func (s *Session) GetNext(oid ObjectIdentifier) (interface{}, error) {
 	priv = []byte(engineStuff.(Sequence)[5].(String))
 
 	result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
-	return result, err
+	getRes, ok := result.(Sequence)[2].(GetResponse)
+	if !ok {
+		return nil, ErrDecodingType
+	}
+
+	return &getRes, nil
 }
 
 func (s *Session) constructPacket(encrypted, priv []byte) ([]byte, error) {
