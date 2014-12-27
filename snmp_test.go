@@ -34,26 +34,33 @@ func TestSNMP(t *testing.T) {
 
 	t.Log(res.varbinds[0].OID)
 
-	oid := MustParseOID(".1.0")
+	oid := MustParseOID(".1.3.6.")
 	for {
 		res, err := sess.Get(oid)
 		if err != nil {
-			break
+			fmt.Println("get:", err, oid)
+			goto NEXT
 		}
 		if len(res.varbinds) == 0 {
 			break
 		}
 
 		fmt.Printf("%v = %T %v\n", res.varbinds[0].OID, res.varbinds[0].value, res.varbinds[0].value)
+
+	NEXT:
 		res, err = sess.GetNext(oid)
 		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println(res)
+		}
+
+		if res != nil && len(res.varbinds) == 0 {
 			break
 		}
 
-		if len(res.varbinds) == 0 {
-			break
+		if res != nil {
+			oid = res.varbinds[0].OID
 		}
-
-		oid = res.varbinds[0].OID
 	}
 }

@@ -59,15 +59,15 @@ func NewSession(address, user, authPassphrase, privPassphrase string) (*Session,
 	return sess, nil
 }
 
-func (s *Session) doRequest(data []byte, reqId int, c chan DataType) error {
+func (s *Session) doRequest(data []byte, reqId int, c chan DataType) {
 	_, err := s.conn.WriteTo(data, s.addr)
 	if err != nil {
-		return err
+		close(c)
 	}
 
 	s.inflight[reqId] = c
 	go func() {
-		<-time.After(500 * time.Millisecond) // TODO: make this into a package-level variable
+		<-time.After(1 * time.Millisecond) // TODO: make this into a package-level variable
 		s.lock.Lock()
 		defer s.lock.Unlock()
 
@@ -78,8 +78,79 @@ func (s *Session) doRequest(data []byte, reqId int, c chan DataType) error {
 			delete(s.inflight, reqId)
 		}
 	}()
+}
 
-	return nil
+func (s *Session) doRequestStuff(packet []byte, requestID int) (DataType, error) {
+	var decoded DataType
+	var ok bool
+
+	for i := 0; i < 10; i++ {
+		c := make(chan DataType)
+		s.doRequest(packet, requestID, c)
+
+		decoded, ok = <-c
+		if ok {
+			break
+		} else {
+			if i == 2 {
+				return nil, errors.New("snmp: timeout")
+			}
+		}
+	}
+
+	seq, ok := decoded.(Sequence)
+	if !ok || len(seq) < 4 {
+		return nil, errors.New("snmp: invalid response")
+	}
+
+	encrypted, ok := seq[3].(String)
+	if !ok {
+		return nil, errors.New("snmp: invalid encrypted contents")
+	}
+
+	engineData, ok := seq[2].(String)
+	if !ok {
+		return nil, errors.New("snmp: invalid engine data contents")
+	}
+
+	engineStuff, _, err := decode(bytes.NewReader([]byte(engineData)))
+
+	if err != nil {
+		return nil, err
+	}
+
+	engineSeq, ok := engineStuff.(Sequence)
+	if !ok || len(engineSeq) < 6 {
+		return nil, errors.New("snmp: invalid engine sequence")
+	}
+
+	boots, ok := engineSeq[1].(Int)
+	if !ok {
+		return nil, errors.New("snmp: invalid engine boots")
+	}
+
+	s.engineBoots = int32(boots)
+
+	engineTime, ok := engineSeq[2].(Int)
+	if !ok {
+		return nil, errors.New("snmp: invalid engine time")
+	}
+
+	s.engineTime = int32(engineTime)
+
+	priv, ok := engineSeq[5].(String)
+	if !ok {
+		return nil, errors.New("snmp: invalid priv")
+	}
+
+	result, _, err := decode(bytes.NewReader(s.decrypt([]byte(encrypted), []byte(priv))))
+
+	resultSeq, ok := result.(Sequence)
+	if !ok || len(resultSeq) < 3 {
+		return nil, errors.New("snmp: invalid result sequence")
+	}
+
+	return resultSeq[2], nil
 }
 
 // TODO: add comment
@@ -239,38 +310,12 @@ func (s *Session) Get(oid ObjectIdentifier) (*GetResponse, error) {
 		return nil, err
 	}
 
-	var decoded DataType
-	var ok bool
-
-	for i := 0; i < 3; i++ {
-		c := make(chan DataType)
-		s.doRequest(packet, int(reqId), c)
-
-		decoded, ok = <-c
-		if ok {
-			break
-		} else {
-			if i == 2 {
-				return nil, errors.New("timeout")
-			}
-		}
-	}
-
-	encrypted = []byte(decoded.(Sequence)[3].(String))
-	engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
-
+	result, err := s.doRequestStuff(packet, reqId)
 	if err != nil {
 		return nil, err
 	}
 
-	s.engineBoots = int32(engineStuff.(Sequence)[1].(Int))
-	s.engineTime = int32(engineStuff.(Sequence)[2].(Int))
-
-	priv = []byte(engineStuff.(Sequence)[5].(String))
-
-	result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
-
-	getRes, ok := result.(Sequence)[2].(GetResponse)
+	getRes, ok := result.(GetResponse)
 	if !ok {
 		return nil, ErrDecodingType
 	}
@@ -295,7 +340,6 @@ func (s *Session) GetNext(oid ObjectIdentifier) (*GetResponse, error) {
 		return nil, err
 	}
 
-	// TODO: function this up
 	encrypted, priv := s.encrypt(getNextReq)
 
 	packet, err := s.constructPacket(encrypted, priv)
@@ -303,36 +347,12 @@ func (s *Session) GetNext(oid ObjectIdentifier) (*GetResponse, error) {
 		return nil, err
 	}
 
-	var decoded DataType
-	var ok bool
-
-	for i := 0; i < 3; i++ {
-		c := make(chan DataType)
-		s.doRequest(packet, int(reqId), c)
-
-		decoded, ok = <-c
-		if ok {
-			break
-		} else {
-			if i == 2 {
-				return nil, errors.New("timeout")
-			}
-		}
-	}
-
-	encrypted = []byte(decoded.(Sequence)[3].(String))
-	engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+	result, err := s.doRequestStuff(packet, reqId)
 	if err != nil {
 		return nil, err
 	}
 
-	s.engineBoots = int32(engineStuff.(Sequence)[1].(Int))
-	s.engineTime = int32(engineStuff.(Sequence)[2].(Int))
-
-	priv = []byte(engineStuff.(Sequence)[5].(String))
-
-	result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
-	getRes, ok := result.(Sequence)[2].(GetResponse)
+	getRes, ok := result.(GetResponse)
 	if !ok {
 		return nil, ErrDecodingType
 	}
