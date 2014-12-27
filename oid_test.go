@@ -27,5 +27,13 @@ func TestEncodeAndParseOID(t *testing.T) {
 	if oid.String() != parsed.String() {
 		t.Errorf("expected parsed ObjectIdentifer %v, got %v", oid, parsed)
 	}
+}
 
+func TestOIDLargeNumbers(t *testing.T) {
+	oid := MustParseOID(".1.3.6.1.2.1.7.7.1.8.1.4.0.0.0.0.68.1.4.0.0.0.0.0.2464081")
+
+	if oid.String() != ".1.3.6.1.2.1.7.7.1.8.1.4.0.0.0.0.68.1.4.0.0.0.0.0.2464081" {
+		t.Errorf("expected ObjectIdentifer %s, got %s",
+			".1.3.6.1.2.1.7.7.1.8.1.4.0.0.0.0.68.1.4.0.0.0.0.0.2464081", oid.String())
+	}
 }
