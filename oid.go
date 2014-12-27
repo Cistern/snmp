@@ -9,7 +9,7 @@ import (
 )
 
 // ObjectIdentifier represents an SNMP OID.
-type ObjectIdentifier []uint16
+type ObjectIdentifier []uint
 
 // ParseOID parses and returns an ObjectIdentifier and an error.
 func ParseOID(str string) (ObjectIdentifier, error) {
@@ -18,12 +18,12 @@ func ParseOID(str string) (ObjectIdentifier, error) {
 	oid := ObjectIdentifier{}
 
 	for _, part := range parts {
-		n, err := strconv.ParseUint(part, 10, 16)
+		n, err := strconv.ParseUint(part, 10, 64)
 		if err != nil {
 			return nil, err
 		}
 
-		oid = append(oid, uint16(n))
+		oid = append(oid, uint(n))
 	}
 
 	return oid, nil
@@ -40,8 +40,8 @@ func MustParseOID(str string) ObjectIdentifier {
 	return oid
 }
 
-// encodeOIDUint encodes a uint16 using base 128.
-func encodeOIDUint(i uint16) []byte {
+// encodeOIDUint encodes a uint using base 128.
+func encodeOIDUint(i uint) []byte {
 	var b []byte
 
 	if i < 128 {
@@ -94,18 +94,18 @@ func decodeOID(length int, r io.Reader) (ObjectIdentifier, int, error) {
 		return nil, bytesRead, err
 	}
 
-	oid := ObjectIdentifier{uint16(b[0]) / 40, uint16(b[0]) % 40}
+	oid := ObjectIdentifier{uint(b[0]) / 40, uint(b[0]) % 40}
 
 	for i := 1; i < length; i++ {
-		val := uint16(0)
+		val := uint(0)
 
 		for b[i] >= 128 {
-			val += uint16(b[i]) - 128
+			val += uint(b[i]) - 128
 			val *= 128
 			i++
 		}
 
-		val += uint16(b[i])
+		val += uint(b[i])
 
 		oid = append(oid, val)
 	}

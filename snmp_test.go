@@ -1,12 +1,11 @@
 package snmp
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestSNMP(t *testing.T) {
-	sess, err := NewSession("localhost:161", "adminusr", "snmpPASSWORD", "snmpPASSWORD")
+	sess, err := NewSession("demo.snmplabs.com:161", "usr-sha-aes", "authkey1", "privkey1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,46 +20,17 @@ func TestSNMP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log(res.requestID)
-	t.Log(res.err)
-	t.Log(res.errIndex)
-	t.Log(res.varbinds[0].OID)
-	t.Log(res.varbinds[0].GetStringValue())
-
-	res, err = sess.GetNext(res.varbinds[0].OID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log(res.varbinds[0].OID)
-
-	oid := MustParseOID(".1.3.6.")
-	for {
-		res, err := sess.Get(oid)
+	if vbinds := res.Varbinds(); len(vbinds) > 0 {
+		desc, err := vbinds[0].GetStringValue()
 		if err != nil {
-			fmt.Println("get:", err, oid)
-			goto NEXT
+			t.Fatalf("expected string value for %v, got %v of type %T", vbinds[0].OID,
+				vbinds[0].value, vbinds[0].value)
 		}
-		if len(res.varbinds) == 0 {
-			break
-		}
-
-		fmt.Printf("%v = %T %v\n", res.varbinds[0].OID, res.varbinds[0].value, res.varbinds[0].value)
-
-	NEXT:
-		res, err = sess.GetNext(oid)
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			fmt.Println(res)
+		if desc != "SunOS zeus.snmplabs.com 4.1.3_U1 1 sun4m" {
+			t.Error("Expected desc %v, got %v", "SunOS zeus.snmplabs.com 4.1.3_U1 1 sun4m", desc)
 		}
 
-		if res != nil && len(res.varbinds) == 0 {
-			break
-		}
-
-		if res != nil {
-			oid = res.varbinds[0].OID
-		}
+	} else {
+		t.Fatalf("expected non-empty Varbinds, got %v", vbinds)
 	}
 }

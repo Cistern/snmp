@@ -27,4 +27,5 @@ func TestEncodeAndParseOID(t *testing.T) {
 	if oid.String() != parsed.String() {
 		t.Errorf("expected parsed ObjectIdentifer %v, got %v", oid, parsed)
 	}
+
 }
