@@ -67,7 +67,7 @@ func (s *Session) doRequest(data []byte, reqId int, c chan DataType) {
 
 	s.inflight[reqId] = c
 	go func() {
-		<-time.After(1 * time.Millisecond) // TODO: make this into a package-level variable
+		<-time.After(100 * time.Millisecond) // TODO: make this into a package-level variable
 		s.lock.Lock()
 		defer s.lock.Unlock()
 
