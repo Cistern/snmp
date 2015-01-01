@@ -52,6 +52,8 @@ func (s *SessionManager) handleDatagrams() error {
 	}
 }
 
+// NewSession creates a new SNMP v3 session using "authPriv" mode with
+// SHA authentication and AES encryption.
 func (s *SessionManager) NewSession(address, user, authPassphrase, privPassphrase string) (*Session, error) {
 	sess, err := newSession(address, user, authPassphrase, privPassphrase)
 	if err != nil {
