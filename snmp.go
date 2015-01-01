@@ -63,6 +63,7 @@ func (s *Session) doRequest(data []byte, reqId int, c chan DataType) {
 	_, err := s.conn.WriteTo(data, s.addr)
 	if err != nil {
 		close(c)
+		return
 	}
 
 	s.inflight[reqId] = c
