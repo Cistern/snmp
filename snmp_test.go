@@ -5,7 +5,12 @@ import (
 )
 
 func TestSNMP(t *testing.T) {
-	sess, err := NewSession("demo.snmplabs.com:161", "usr-sha-aes", "authkey1", "privkey1")
+	sessionManager, err := NewSessionManager()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sess, err := sessionManager.NewSession("demo.snmplabs.com:161", "usr-sha-aes", "authkey1", "privkey1")
 	if err != nil {
 		t.Fatal(err)
 	}

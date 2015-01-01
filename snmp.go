@@ -15,6 +15,7 @@ import (
 type Session struct {
 	addr           *net.UDPAddr
 	conn           *net.UDPConn
+	inbound        chan []byte
 	user           []byte
 	authPassphrase []byte
 	privPassphrase []byte
@@ -31,22 +32,17 @@ type Session struct {
 	lock     sync.Mutex
 }
 
-// NewSession creates a new SNMP v3 session using "authPriv" mode with
+// newSession creates a new SNMP v3 session using "authPriv" mode with
 // SHA authentication and AES encryption.
-func NewSession(address, user, authPassphrase, privPassphrase string) (*Session, error) {
+func newSession(address, user, authPassphrase, privPassphrase string) (*Session, error) {
 	addr, err := net.ResolveUDPAddr("udp", address)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := net.ListenUDP("udp", nil)
 	if err != nil {
 		return nil, err
 	}
 
 	sess := &Session{
 		addr:           addr,
-		conn:           conn,
+		inbound:        make(chan []byte),
 		user:           []byte(user),
 		authPassphrase: []byte(authPassphrase),
 		privPassphrase: []byte(privPassphrase),
@@ -156,16 +152,8 @@ func (s *Session) doRequestStuff(packet []byte, requestID int) (DataType, error)
 
 // TODO: add comment
 func (s *Session) handleListen() {
-	b := make([]byte, 65500)
-
-	for {
-		n, err := s.conn.Read(b)
-		if err != nil {
-			continue // TODO: Check if we might get into an infinite loop...
-			// What if the socket gets closed?
-		}
-
-		decoded, _, err := decode(bytes.NewReader(b[:n]))
+	for buf := range s.inbound {
+		decoded, _, err := decode(bytes.NewReader(buf))
 		if err != nil {
 			log.Println(err)
 			continue
@@ -400,8 +388,4 @@ func (s *Session) constructPacket(encrypted, priv []byte) ([]byte, error) {
 	authParam := s.auth(packet)
 
 	return bytes.Replace(packet, bytes.Repeat([]byte{0}, 12), authParam, 1), nil
-}
-
-func (s *Session) Close() error {
-	return s.conn.Close()
 }
