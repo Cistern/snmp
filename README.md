@@ -1,4 +1,4 @@
-snmp [![Build Status](https://drone.io/github.com/PreetamJinka/snmp/status.png)](https://drone.io/github.com/PreetamJinka/snmp/latest) [![GoDoc](https://godoc.org/github.com/PreetamJinka/snmp?status.svg)](https://godoc.org/github.com/PreetamJinka/snmp) [![BSD License](https://img.shields.io/pypi/l/Django.svg)]()
+snmp [![Build Status](https://drone.io/github.com/PreetamJinka/snmp/status.png)](https://drone.io/github.com/PreetamJinka/snmp/latest) [![GoDoc](https://godoc.org/github.com/PreetamJinka/snmp?status.svg)](https://godoc.org/github.com/PreetamJinka/snmp) [![BSD License](https://img.shields.io/pypi/l/Django.svg)](https://github.com/PreetamJinka/snmp/blob/master/LICENSE)
 ====
 
 An [SNMP](http://en.wikipedia.org/wiki/Simple_Network_Management_Protocol) v3 client library for Go.
