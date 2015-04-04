@@ -62,7 +62,10 @@ func (s *Session) doRequest(data []byte, reqId int, c chan DataType) {
 		return
 	}
 
+	s.lock.Lock()
 	s.inflight[reqId] = c
+	s.lock.Unlock()
+
 	go func() {
 		<-time.After(300 * time.Millisecond) // TODO: make this into a package-level variable
 		s.lock.Lock()
@@ -71,6 +74,7 @@ func (s *Session) doRequest(data []byte, reqId int, c chan DataType) {
 		// TODO: explain what this is doing
 		if c, ok := s.inflight[reqId]; ok {
 			// haven't received a response yet
+
 			close(c)
 			delete(s.inflight, reqId)
 		}
