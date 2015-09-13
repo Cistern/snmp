@@ -60,7 +60,7 @@ func decode(r io.Reader) (DataType, int, error) {
 
 	case TypeString:
 		str := make([]byte, length)
-		n, _ := r.Read(str)
+		n, err := r.Read(str)
 		bytesRead += n
 
 		if err != nil {
@@ -71,7 +71,7 @@ func decode(r io.Reader) (DataType, int, error) {
 
 	case TypeIpAddress:
 		ip := make(IpAddress, length)
-		n, _ := r.Read(ip)
+		n, err := r.Read(ip)
 		bytesRead += n
 
 		if err != nil {
