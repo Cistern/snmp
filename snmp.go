@@ -55,7 +55,7 @@ func newSession(address, user, authPassphrase, privPassphrase string) (*Session,
 	return sess, nil
 }
 
-func (s *Session) doRequest(data []byte, reqId int, c chan DataType) {
+func (s *Session) sendRequest(data []byte, reqId int, c chan DataType) {
 	_, err := s.conn.WriteTo(data, s.addr)
 	if err != nil {
 		close(c)
@@ -81,13 +81,13 @@ func (s *Session) doRequest(data []byte, reqId int, c chan DataType) {
 	}()
 }
 
-func (s *Session) doRequestStuff(packet []byte, requestID int) (DataType, error) {
+func (s *Session) doRequest(packet []byte, requestID int) (DataType, error) {
 	var decoded DataType
 	var ok bool
 
 	for i := 0; i < 10; i++ {
 		c := make(chan DataType)
-		s.doRequest(packet, requestID, c)
+		s.sendRequest(packet, requestID, c)
 
 		decoded, ok = <-c
 		if ok {
@@ -114,13 +114,13 @@ func (s *Session) doRequestStuff(packet []byte, requestID int) (DataType, error)
 		return nil, errors.New("snmp: invalid engine data contents")
 	}
 
-	engineStuff, _, err := decode(bytes.NewReader([]byte(engineData)))
+	decodedEngineData, _, err := decode(bytes.NewReader([]byte(engineData)))
 
 	if err != nil {
 		return nil, err
 	}
 
-	engineSeq, ok := engineStuff.(Sequence)
+	engineSeq, ok := decodedEngineData.(Sequence)
 	if !ok || len(engineSeq) < 6 {
 		return nil, errors.New("snmp: invalid engine sequence")
 	}
@@ -173,15 +173,15 @@ func (s *Session) handleListen() {
 		case String:
 			encrypted := []byte(decoded.(Sequence)[3].(String)) // TODO: make this safe
 
-			engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+			decodedEngineData, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 			if err != nil {
 				continue
 			}
 
-			s.engineBoots = int32(engineStuff.(Sequence)[1].(Int))
-			s.engineTime = int32(engineStuff.(Sequence)[2].(Int))
+			s.engineBoots = int32(decodedEngineData.(Sequence)[1].(Int))
+			s.engineTime = int32(decodedEngineData.(Sequence)[2].(Int))
 
-			priv := []byte(engineStuff.(Sequence)[5].(String))
+			priv := []byte(decodedEngineData.(Sequence)[5].(String))
 
 			result, _, err := decode(bytes.NewReader(s.decrypt(encrypted, priv)))
 
@@ -255,7 +255,7 @@ func (s *Session) Discover() error {
 	// TODO: turn this into a function?
 	for i := 0; i < 3; i++ {
 		c := make(chan DataType)
-		s.doRequest(discoverySequence, int(reqId), c)
+		s.sendRequest(discoverySequence, int(reqId), c)
 
 		decoded, ok = <-c
 		if ok {
@@ -267,14 +267,14 @@ func (s *Session) Discover() error {
 		}
 	}
 
-	engineStuff, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
+	decodedEngineData, _, err := decode(bytes.NewReader([]byte(decoded.(Sequence)[2].(String))))
 	if err != nil {
 		return err
 	}
 
-	s.engineID = []byte(engineStuff.(Sequence)[0].(String))
-	s.engineBoots = int32(engineStuff.(Sequence)[1].(Int))
-	s.engineTime = int32(engineStuff.(Sequence)[2].(Int))
+	s.engineID = []byte(decodedEngineData.(Sequence)[0].(String))
+	s.engineBoots = int32(decodedEngineData.(Sequence)[1].(Int))
+	s.engineTime = int32(decodedEngineData.(Sequence)[2].(Int))
 
 	s.privKey = passphraseToKey(s.privPassphrase, s.engineID)[:16]
 	s.authKey = passphraseToKey(s.authPassphrase, s.engineID)
@@ -303,7 +303,7 @@ func (s *Session) Get(oid ObjectIdentifier) (*GetResponse, error) {
 		return nil, err
 	}
 
-	result, err := s.doRequestStuff(packet, reqId)
+	result, err := s.doRequest(packet, reqId)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,7 @@ func (s *Session) GetNext(oid ObjectIdentifier) (*GetResponse, error) {
 		return nil, err
 	}
 
-	result, err := s.doRequestStuff(packet, reqId)
+	result, err := s.doRequest(packet, reqId)
 	if err != nil {
 		return nil, err
 	}
