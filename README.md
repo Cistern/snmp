@@ -1,4 +1,4 @@
-snmp [![Circle CI](https://circleci.com/gh/Preetam/snmp.svg?style=svg)](https://circleci.com/gh/Preetam/snmp) [![GoDoc](https://godoc.org/github.com/PreetamJinka/snmp?status.svg)](https://godoc.org/github.com/PreetamJinka/snmp) [![BSD License](https://img.shields.io/pypi/l/Django.svg)](https://github.com/PreetamJinka/snmp/blob/master/LICENSE)
+snmp [![Circle CI](https://circleci.com/gh/Cistern/snmp.svg?style=svg&circle-token=6a02882a38de80ca5628580d3579c2dd32242321)](https://circleci.com/gh/Cistern/snmp) [![GoDoc](https://godoc.org/github.com/PreetamJinka/snmp?status.svg)](https://godoc.org/github.com/PreetamJinka/snmp) [![BSD License](https://img.shields.io/pypi/l/Django.svg)](https://github.com/PreetamJinka/snmp/blob/master/LICENSE)
 ====
 
 An [SNMP](http://en.wikipedia.org/wiki/Simple_Network_Management_Protocol) v3 client library for Go.
